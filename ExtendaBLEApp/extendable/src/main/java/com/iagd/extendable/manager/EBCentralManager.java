@@ -15,6 +15,8 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelUuid;
 import android.util.Log;
 
@@ -31,7 +33,9 @@ import com.iagd.extendable.transaction.EBTransaction;
 
 public class EBCentralManager {
 
+    private static final String mtuServiceUUIDString = "F80A41CA-8B71-47BE-8A92-E05BB5F1F862";
     private static final String mtuServiceCharacteristicUUID = "37CD1740-6822-4D85-9AAF-C2378FDC4329";
+    private static final String dataServiceUUIDString = "3C215EBB-D3EF-4D7E-8E00-A700DFD6E9EF";
 
     private static String logTag = "CentralManager";
 
@@ -39,7 +43,7 @@ public class EBCentralManager {
 
     private BluetoothManager bluetoothManager;
     private BluetoothLeScanner mBTScanner;
-
+    private BluetoothGatt mConnectedGatt;
     private short mtuSize = 20;
 
     public ArrayList<UUID> registeredServiceUUIDS = new ArrayList<>();
@@ -77,10 +81,17 @@ public class EBCentralManager {
         AsyncTask.execute(() -> {
             Log.d(logTag, "Configured Scan Settings / Filters");
 
-            List<ScanFilter> filters = registeredServiceUUIDS.stream().map(uuid ->
-                    new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build()).collect(Collectors.toList());
+            List<ScanFilter> filters = new ArrayList<>();
+            ScanFilter filter = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(UUID.fromString(mtuServiceUUIDString))).build();
+            ScanFilter filter2 = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(UUID.fromString(dataServiceUUIDString))).build();
+            filters.add(filter);
+            filters.add(filter2);
+
+           // registeredServiceUUIDS.stream().map(uuid ->
+             //       new ScanFilter.Builder().setServiceUuid(new ParcelUuid(uuid)).build()).collect(Collectors.toList());
 
             ScanSettings settings = new ScanSettings.Builder().build();
+           // mBTScanner.startScan(leScanCallback);
             mBTScanner.startScan(filters, settings, leScanCallback);
         });
     }
@@ -89,9 +100,12 @@ public class EBCentralManager {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             Log.d(logTag, "Scan Results Triggered, Connection to :" + result.getDevice().getName());
-            result.getDevice().connectGatt(applicationContext, false, leGattCallback);
+            mConnectedGatt = result.getDevice().connectGatt(applicationContext, false, leGattCallback);
             stopScanning();
-        }
+
+
+
+         }
     };
 
 
@@ -104,7 +118,6 @@ public class EBCentralManager {
         Log.d(logTag, "Service Discovery status : " + status);
 
         for (BluetoothGattService service : gatt.getServices()) {
-            Log.d(logTag, "Services found with UUID : " + service.getUuid());
 
             if (registeredServiceUUIDS.contains(service.getUuid())) {
                 Log.d(logTag, "Services matched registered UUIDs" + service.getUuid());
@@ -112,7 +125,7 @@ public class EBCentralManager {
 
                 List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
 
-                for (BluetoothGattCharacteristic characteristic : characteristics) {
+                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
                     Log.d(logTag, "       - " + characteristic.getUuid());
 
                     connectedCharacteristics.putIfAbsent(gatt, new ArrayList<>());
@@ -161,7 +174,7 @@ public class EBCentralManager {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(logTag, "Connected to GATT : " + gatt.getDevice().getName());
                 Log.d(logTag, "Starting Service Discovery");
-                gatt.discoverServices();
+                mConnectedGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(logTag, "Disconnected from GATT : " + gatt.getDevice().getName());
             }
@@ -192,7 +205,7 @@ public class EBCentralManager {
 
             if (characteristic.getUuid().toString().toUpperCase().equals("37CD1740-6822-4D85-9AAF-C2378FDC4329")) {
                 EBData response = new EBData(characteristic.getValue());
-                mtuSize =  response.getShortAtIndex(0);
+                mtuSize =  response.getByteAtIndex(0);
                 triggerConnectionChangedCallback();
             }
         }
@@ -263,6 +276,7 @@ public class EBCentralManager {
 
         for (BluetoothGatt gatt : connectedCharacteristics.keySet()) {
             for (BluetoothGattCharacteristic characteristic : connectedCharacteristics.get(gatt)) {
+                Log.d(logTag, "Write for " + characteristicUUID + "Against List Item" + characteristic.getUuid().toString());
 
                 if (characteristic.getUuid().toString().toUpperCase().equals(characteristicUUID)) {
 
@@ -311,6 +325,7 @@ public class EBCentralManager {
                         transaction.getCompletionCallback().call();
                         activeWriteTransations.get(fromGatt).remove(index);
                     }  else {
+                        Log.d(logTag, "Write Next Packet Triggered");
                         byte[] packet = transaction.nextPacket();
                         transaction.getCharacteristic().setValue(packet);
                         fromGatt.writeCharacteristic(characteristic);

@@ -73,7 +73,9 @@ public class EBData {
         while (offset < length) {
             currentCount += 1;
 
-            int currentPacketSize = Math.min((length - offset), packetSize);
+            int currentPacketSize = ((length - offset) > packetSize) ? packetSize : (length - offset);
+
+            //int currentPacketSize = Math.min((length - offset), packetSize);
             byte[] block = Arrays.copyOfRange(dataBytes, offset, offset + currentPacketSize);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();

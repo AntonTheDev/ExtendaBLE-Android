@@ -1,27 +1,31 @@
 package com.iagd.extendableapp;
 
- import android.Manifest;
-        import android.content.pm.PackageManager;
-        import android.support.annotation.NonNull;
-        import android.support.v4.app.ActivityCompat;
-        import android.support.v7.app.AppCompatActivity;
-        import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 
- import com.iagd.extendable.ExtendaBLE;
- import com.iagd.extendable.result.ExtendaBLEResultCallback;
 
- import static android.bluetooth.BluetoothGattCharacteristic.PERMISSION_READ;
-        import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY;
-        import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_READ;
-        import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE;
-        import static android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE;
+import com.iagd.extendable.ExtendaBLE;
+import com.iagd.extendable.manager.EBCentralManager;
+import com.iagd.extendable.result.ExtendaBLEResultCallback;
+
+import java.util.concurrent.Callable;
+
+import static android.bluetooth.BluetoothGattCharacteristic.PERMISSION_READ;
+import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY;
+import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_READ;
+import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE;
+import static android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String testValueString2 = "Hello this is a faily long string to check how many bytes lets make this a lot longer even longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer XXXXXXXXXXXXXXXX";
+    private static final String testValueString = "Hello this is a faily long string to check how many bytes lets make this a lot longer even longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer XXXXXXXXXXXXXXXX";
     private EBCentralManager centralManager;
 
-    private static final String dataServiceUUIDString = "F80A41CA-8B71-47BE-8A92-E05BB5F1F862";
+    private static final String dataServiceUUIDString = "3C215EBB-D3EF-4D7E-8E00-A700DFD6E9EF";
     private static final String dataServiceCharacteristicUUID = "830FEB83-C879-4B14-92E0-DF8CCDDD8D8F";
 
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
@@ -55,14 +59,19 @@ public class MainActivity extends AppCompatActivity {
                     });
                 });
             });
-        }).setPeripheralConnectionCallback(() -> {
-            performWrite();
-            return null;
+        });
+
+        centralManager.setPeripheralConnectionCallback(new Callable() {
+            @Override
+            public Object call() throws Exception {
+                performWrite();
+                return null;
+            }
         });
     }
 
     private void performWrite() {
-        centralManager.write(dataServiceCharacteristicUUID, testValueString2, new ExtendaBLEResultCallback() {
+        centralManager.write(dataServiceCharacteristicUUID, testValueString, new ExtendaBLEResultCallback() {
             @Override
             public Void call()  {
                 System.out.println("Write Complete");
