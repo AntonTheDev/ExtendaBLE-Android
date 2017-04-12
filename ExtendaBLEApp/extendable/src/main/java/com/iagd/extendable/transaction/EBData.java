@@ -1,5 +1,7 @@
 package com.iagd.extendable.transaction;
 
+import android.util.Log;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -15,53 +17,106 @@ import java.util.Arrays;
 
 public class EBData {
 
+    private static String logTag = "Data";
+
     private byte[] dataBytes;
     private short mtuSize;
+
+    private ArrayList<byte[]> dataPackets;
+
+    public EBData(ArrayList<byte[]> dataPackets) {
+        this.dataPackets = dataPackets;
+        this.dataBytes = reconstructedData();
+    }
+
+    public EBData(Object value, short mtuSize) {
+        this.mtuSize = mtuSize;
+        EBData request = null;
+
+        if (value.getClass().equals(String.class)) {
+            configure((String) value, mtuSize);
+        } else if (value.getClass().equals(Byte.class)) {
+            configure((byte) value, mtuSize);
+        } else if (value.getClass().equals(Short.class)) {
+            configure((short) value, mtuSize);
+        } else if (value.getClass().equals(Integer.class)) {
+            configure((int) value, mtuSize);
+        } else if (value.getClass().equals(Long.class)) {
+            configure((long) value, mtuSize);
+        }
+
+        if (request != null) {
+            dataPackets = request.chunckedArray();
+        }
+    }
 
     public EBData(byte[] bytes) {
         dataBytes = bytes;
     }
 
-    public EBData(byte byteValue, short mtuSize) {
+    public EBData(byte[] bytes, short mtuSize) {
+        dataBytes = bytes;
+        this.mtuSize = mtuSize;
+    }
+
+    public byte[] getData() {
+        return dataBytes;
+    }
+
+    private void configure(byte byteValue, short mtuSize) {
         ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES);
-        buffer.putLong(byteValue);
+        buffer.put(byteValue);
         this.dataBytes =  buffer.array();
         this.mtuSize = mtuSize;
     }
 
-    public EBData(short shortValue, short mtuSize) {
+    private void configure(short shortValue, short mtuSize) {
         ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES);
-        buffer.putLong(shortValue);
+        buffer.putShort(shortValue);
         this.dataBytes =  buffer.array();
         this.mtuSize = mtuSize;
     }
 
-    public EBData(int intValue, short mtuSize) {
+    private void configure(int intValue, short mtuSize) {
         ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-        buffer.putLong(intValue);
+        buffer.putInt(intValue);
         this.dataBytes =  buffer.array();
         this.mtuSize = mtuSize;
     }
 
-    public EBData(long longValue, short mtuSize) {
+    private void configure(long longValue, short mtuSize) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(longValue);
         this.dataBytes =  buffer.array();
         this.mtuSize = mtuSize;
     }
 
-    public EBData(String stringValue, short mtuSize) {
+    private void configure(String stringValue, short mtuSize) {
         this.dataBytes = stringValue.getBytes(StandardCharsets.UTF_8);
         this.mtuSize = mtuSize;
     }
 
+    public byte[] reconstructedData() {
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        DataOutputStream dout = new DataOutputStream(out);
+
+        for (byte[] packet : dataPackets) {
+
+            byte[] packetBytes = Arrays.copyOfRange(packet, 4, packet.length);
+            try {
+                dout.write(packetBytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return out.toByteArray();
+    }
+
     public ArrayList<byte[]> chunckedArray() {
 
-        int pos = 0;
-        int remaining;
-
         ArrayList<byte[]> dataPackets = new ArrayList<>();
-
 
         int packetSize = mtuSize - 4;
         int length = dataBytes.length;
@@ -69,19 +124,16 @@ public class EBData {
         short totalPackets  = (short) ((dataBytes.length / packetSize) + (dataBytes.length % packetSize > 0 ? 1 : 0));
         short currentCount = 0;
 
-
         while (offset < length) {
             currentCount += 1;
 
             int currentPacketSize = ((length - offset) > packetSize) ? packetSize : (length - offset);
-
-            //int currentPacketSize = Math.min((length - offset), packetSize);
             byte[] block = Arrays.copyOfRange(dataBytes, offset, offset + currentPacketSize);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             DataOutputStream dout = new DataOutputStream(out);
 
-            System.out.println(currentCount + " / " + totalPackets);
+            Log.d(logTag, currentCount + " / " + totalPackets);
 
             try {
                 dout.writeShort(currentCount);

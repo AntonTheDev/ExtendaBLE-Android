@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothGattService;
 
 import com.iagd.extendable.maker.lambdas.ServiceMakerOperation;
 import com.iagd.extendable.manager.EBCentralManager;
+import com.iagd.extendable.manager.EBPeripheralManager;
+
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -16,17 +18,17 @@ import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE;
 import static android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE;
 
 /**
- * Created by Anton on 4/4/17.
+ * Created by Anton on 4/10/17.
  */
 
-public class EBCentralManagerMaker {
+public class EBPeripheralManagerMaker {
 
     private static final String mtuServiceUUIDString = "F80A41CA-8B71-47BE-8A92-E05BB5F1F862";
     private static final String mtuServiceCharacteristicUUID = "37CD1740-6822-4D85-9AAF-C2378FDC4329";
 
     public ArrayList<EBServiceMaker> services = new ArrayList<EBServiceMaker>();
 
-    public EBCentralManager addService(String serviceUUID, ServiceMakerOperation maker) {
+    public EBPeripheralManager addService(String serviceUUID, ServiceMakerOperation maker) {
         EBServiceMaker serviceMaker =  new EBServiceMaker();
         serviceMaker.setUUID(serviceUUID);
         maker.addService(serviceMaker);
@@ -34,9 +36,9 @@ public class EBCentralManagerMaker {
         return constructedManager();
     }
 
-    public EBCentralManager constructedManager() {
+    public EBPeripheralManager constructedManager() {
 
-        EBCentralManager newManager = new EBCentralManager();
+        EBPeripheralManager newManager = new EBPeripheralManager();
 
         for (EBServiceMaker service : services) {
             for (UUID key : service.callbacks.keySet()) {
@@ -49,7 +51,7 @@ public class EBCentralManagerMaker {
                 }
             }
 
-            newManager.registeredServiceUUIDS.add(service.getServiceUUID());
+            newManager.registeredServices.add(service.constructedService());
             newManager.chunkedChracteristicUUIDS.addAll(service.chunkedUUIDs);
         }
 
@@ -58,7 +60,7 @@ public class EBCentralManagerMaker {
             UUID serviceUUID = UUID.fromString(mtuServiceUUIDString);
             UUID characteristicUUID = UUID.fromString(mtuServiceCharacteristicUUID);
 
-            BluetoothGattService newService = new BluetoothGattService(serviceUUID,  BluetoothGattService.SERVICE_TYPE_PRIMARY);
+            BluetoothGattService newService = new BluetoothGattService(serviceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
 
             BluetoothGattCharacteristic newCharacteristic = new BluetoothGattCharacteristic(characteristicUUID,
                     PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY,
@@ -68,7 +70,7 @@ public class EBCentralManagerMaker {
             newCharacteristic.addDescriptor(gD);
 
             newService.addCharacteristic(newCharacteristic);
-            newManager.registeredServiceUUIDS.add(serviceUUID);
+            newManager.registeredServices.add(newService);
         }
 
         return newManager;
