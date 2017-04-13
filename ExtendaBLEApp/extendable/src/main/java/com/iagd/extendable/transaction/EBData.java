@@ -17,7 +17,7 @@ import java.util.Arrays;
 
 public class EBData {
 
-    private static String logTag = "Data";
+    private static String logTag = "TransactionResult";
 
     private byte[] dataBytes;
     private short mtuSize;
@@ -153,26 +153,56 @@ public class EBData {
     }
 
     public byte getByteAtIndex(int index) {
-        byte byteValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).get(index);
-        return byteValue;
+        try {
+            byte byteValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).get(index);
+            return byteValue;
+        } catch(IndexOutOfBoundsException e) {
+            Log.e(logTag, "getByteAtIndex Exception Thrown :" + e);
+        } finally {
+            return 0;
+        }
     }
 
     public short getShortAtIndex(int index) {
-        short shortValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getShort(index);
-        return shortValue;
+        try {
+            short shortValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getShort(index);
+            return shortValue;
+        } catch(IndexOutOfBoundsException e) {
+            Log.e(logTag, "getShortAtIndex Exception Thrown :" + e);
+        } finally {
+            return 0;
+        }
     }
 
     public int getIntAtIndex(int index) {
-        int intValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getInt(index);
-        return intValue;
+        try {
+            int intValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getInt(index);
+            return intValue;
+        } catch(IndexOutOfBoundsException e) {
+            Log.e(logTag, "getIntAtIndex Exception Thrown :" + e);
+        } finally {
+            return 0;
+        }
     }
 
     public long getLongAtIndex(int index) {
-        long longValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getLong(index);
-        return longValue;
+        try {
+            long longValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getLong(index);
+            return longValue;
+        } catch(IndexOutOfBoundsException e) {
+            Log.e(logTag, "getLongAtIndex Exception Thrown :" + e);
+        } finally {
+            return 0;
+        }
     }
 
     public String getString() {
-        return new String(dataBytes, StandardCharsets.UTF_8);
+        try {
+            return new String(dataBytes, StandardCharsets.UTF_8);
+        } catch(IndexOutOfBoundsException e) {
+            Log.e(logTag, "getString Exception Thrown :" + e);
+        } finally {
+            return new String("Out Of Bounds");
+        }
     }
 }

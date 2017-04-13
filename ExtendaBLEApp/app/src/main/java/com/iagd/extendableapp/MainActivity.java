@@ -8,13 +8,10 @@ import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
-
 import com.iagd.extendable.ExtendaBLE;
 import com.iagd.extendable.manager.EBCentralManager;
 import com.iagd.extendable.manager.EBPeripheralManager;
 import com.iagd.extendable.result.ExtendaBLEResultCallback;
-
-import java.util.concurrent.Callable;
 
 import static android.bluetooth.BluetoothGattCharacteristic.PERMISSION_READ;
 import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY;
@@ -22,18 +19,34 @@ import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_READ;
 import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE;
 import static android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE;
 
+
 public class MainActivity extends AppCompatActivity {
+
+    enum DeviceType {
+        CENTRAL,
+        PERIPHERAL,
+        BEAN_CENTRAL
+    }
+
+    static DeviceType activityConfiguration = DeviceType.BEAN_CENTRAL;
 
     private static String peripheralLogTag = "PeripheralManager";
     private static String centralLogTag = "CentralManager";
 
     private static final String testValueString = "Hello this is a faily long string to check how many bytes lets make this a lot longer even longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer XXXXXXXXXXXXXXXX";
+
+    private static final String dataServiceUUIDString               = "3C215EBB-D3EF-4D7E-8E00-A700DFD6E9EF";
+    private static final String dataServiceCharacteristicUUID       = "830FEB83-C879-4B14-92E0-DF8CCDDD8D8F";
+
+    private static final String beanScratchServiceUUIDKey           = "a495ff20-c5b1-4b44-b512-1370f02d74de";
+    private static final String beanScratchCharacteristic1UUIDKey   = "a495ff21-c5b1-4b44-b512-1370f02d74de";
+    private static final String beanScratchCharacteristic2UUIDKey   = "a495ff22-c5b1-4b44-b512-1370f02d74de";
+    private static final String beanScratchCharacteristic3UUIDKey   = "a495ff23-c5b1-4b44-b512-1370f02d74de";
+    private static final String beanScratchCharacteristic4UUIDKey   = "a495ff24-c5b1-4b44-b512-1370f02d74de";
+    private static final String beanScratchCharacteristic5UUIDKey   = "a495ff25-c5b1-4b44-b512-1370f02d74de";
+
     private EBCentralManager centralManager;
-
     private EBPeripheralManager peripheralManager;
-
-    private static final String dataServiceUUIDString = "3C215EBB-D3EF-4D7E-8E00-A700DFD6E9EF";
-    private static final String dataServiceCharacteristicUUID = "830FEB83-C879-4B14-92E0-DF8CCDDD8D8F";
 
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
 
@@ -41,13 +54,32 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         checkPermissionsAndScan();
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        switch (activityConfiguration) {
+            case CENTRAL:
+                centralManager.close();
+            case PERIPHERAL:
+                peripheralManager.close();
+            case BEAN_CENTRAL:
+                centralManager.close();
+        }
+    }
+
     public void startManager() {
-        startPeripheralManager();
-       // startCentrallManager();
+        switch (activityConfiguration) {
+            case CENTRAL:
+                startCentrallManager();
+            case PERIPHERAL:
+                startPeripheralManager();
+            case BEAN_CENTRAL:
+                startBeanCentralManager();
+        }
     }
 
     public void startCentrallManager() {
@@ -57,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
             manager.addService(dataServiceUUIDString, service -> {
                 service.addCharacteristic(dataServiceCharacteristicUUID, characteristic -> {
 
-                    characteristic.setProperties(new int[]{ PROPERTY_READ, PROPERTY_WRITE, PROPERTY_NOTIFY });
-                    characteristic.setPermissions(new int[]{ PERMISSION_READ, PERMISSION_WRITE });
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
                     characteristic.setChunkingEnabled(true);
 
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
@@ -72,26 +104,22 @@ public class MainActivity extends AppCompatActivity {
             });
         });
 
-        centralManager.setPeripheralConnectionCallback(new Callable() {
-            @Override
-            public Object call() throws Exception {
-                performWrite();
-                return null;
-            }
+        centralManager.setPeripheralConnectionCallback(() -> {
+            performWrite();
+            return null;
         });
 
         centralManager.startScanningInApplicationContext(getApplicationContext());
     }
 
     public void startPeripheralManager() {
-
         peripheralManager = ExtendaBLE.newPeripheralManager(manager -> {
 
             manager.addService(dataServiceUUIDString, service -> {
                 service.addCharacteristic(dataServiceCharacteristicUUID, characteristic -> {
 
-                    characteristic.setProperties(new int[]{ PROPERTY_READ, PROPERTY_WRITE, PROPERTY_NOTIFY });
-                    characteristic.setPermissions(new int[]{ PERMISSION_READ, PERMISSION_WRITE });
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
                     characteristic.setChunkingEnabled(true);
 
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
@@ -138,6 +166,141 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     Log.d("Centra Manager", "Read Complete " + resultString);
+                }
+                return null;
+            }
+        });
+    }
+
+    public void startBeanCentralManager() {
+
+        centralManager = ExtendaBLE.newCentralManager(manager -> {
+            manager.setPeripheralName("Bean");
+            manager.addService(beanScratchServiceUUIDKey, service -> {
+
+                service.addCharacteristic(beanScratchCharacteristic1UUIDKey, characteristic -> {
+
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
+                    characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
+                        @Override
+                        public Void call()  {
+                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            return null;
+                        }
+                    });
+                });
+                service.addCharacteristic(beanScratchCharacteristic2UUIDKey, characteristic -> {
+
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
+                    characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
+                        @Override
+                        public Void call()  {
+                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            return null;
+                        }
+                    });
+                });
+                service.addCharacteristic(beanScratchCharacteristic3UUIDKey, characteristic -> {
+
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
+                    characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
+                        @Override
+                        public Void call()  {
+                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            return null;
+                        }
+                    });
+                });
+                service.addCharacteristic(beanScratchCharacteristic4UUIDKey, characteristic -> {
+
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
+                    characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
+                        @Override
+                        public Void call()  {
+                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            return null;
+                        }
+                    });
+                });
+                service.addCharacteristic(beanScratchCharacteristic5UUIDKey, characteristic -> {
+
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
+                    characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
+                        @Override
+                        public Void call()  {
+                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            return null;
+                        }
+                    });
+                });
+            });
+        });
+
+        centralManager.setPeripheralConnectionCallback(() -> {
+            performBeanRead();
+            return null;
+        });
+
+        centralManager.startScanningInApplicationContext(getApplicationContext());
+    }
+
+    private void performBeanRead() {
+
+        centralManager.read(beanScratchCharacteristic1UUIDKey, new ExtendaBLEResultCallback() {
+            @Override
+            public Void call()  {
+                if (result != null) {
+                    byte value = result.getByteAtIndex(0);
+                    Log.d(centralLogTag, "Central Read beanScratchCharacteristic1UUIDKey w/ value " + value);
+                }
+                return null;
+            }
+        });
+
+        centralManager.read(beanScratchCharacteristic2UUIDKey, new ExtendaBLEResultCallback() {
+            @Override
+            public Void call()  {
+                if (result != null) {
+                    byte value = result.getByteAtIndex(0);
+                    Log.d(centralLogTag, "Central Read beanScratchCharacteristic2UUIDKey w/ value " + value);
+                }
+                return null;
+            }
+        });
+
+        centralManager.read(beanScratchCharacteristic3UUIDKey, new ExtendaBLEResultCallback() {
+            @Override
+            public Void call()  {
+                if (result != null) {
+                    byte value = result.getByteAtIndex(0);
+                    Log.d(centralLogTag, "Central Read beanScratchCharacteristic3UUIDKey w/ value " + value);
+                }
+                return null;
+            }
+        });
+
+        centralManager.read(beanScratchCharacteristic4UUIDKey, new ExtendaBLEResultCallback() {
+            @Override
+            public Void call()  {
+                if (result != null) {
+                    byte value = result.getByteAtIndex(0);
+                    Log.d(centralLogTag, "Central Read beanScratchCharacteristic4UUIDKey w/ value " + value);
+                }
+                return null;
+            }
+        });
+
+        centralManager.read(beanScratchCharacteristic5UUIDKey, new ExtendaBLEResultCallback() {
+            @Override
+            public Void call()  {
+                if (result != null) {
+                    byte value = result.getByteAtIndex(0);
+                    Log.d(centralLogTag, "Central Read beanScratchCharacteristic5UUIDKey w/ value " + value);
                 }
                 return null;
             }

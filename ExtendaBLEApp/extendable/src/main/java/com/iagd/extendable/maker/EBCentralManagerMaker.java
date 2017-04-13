@@ -6,6 +6,8 @@ import android.bluetooth.BluetoothGattService;
 
 import com.iagd.extendable.maker.lambdas.ServiceMakerOperation;
 import com.iagd.extendable.manager.EBCentralManager;
+import com.iagd.extendable.result.ExtendaBLEResultCallback;
+
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -25,6 +27,7 @@ public class EBCentralManagerMaker {
     private static final String mtuServiceCharacteristicUUID = "37CD1740-6822-4D85-9AAF-C2378FDC4329";
 
     public ArrayList<EBServiceMaker> services = new ArrayList<EBServiceMaker>();
+    private String peripheralName;
 
     public EBCentralManager addService(String serviceUUID, ServiceMakerOperation maker) {
         EBServiceMaker serviceMaker =  new EBServiceMaker();
@@ -34,9 +37,15 @@ public class EBCentralManagerMaker {
         return constructedManager();
     }
 
+    public EBCentralManagerMaker setPeripheralName(String peripheralName) {
+        this.peripheralName = peripheralName;
+        return this;
+    }
+
     public EBCentralManager constructedManager() {
 
         EBCentralManager newManager = new EBCentralManager();
+        newManager.peripheralName = peripheralName;
 
         for (EBServiceMaker service : services) {
             for (UUID key : service.callbacks.keySet()) {
@@ -44,10 +53,12 @@ public class EBCentralManagerMaker {
             }
 
             for (EBCharacteristicMaker maker : service.characteristics) {
+                newManager.registeredChracteristicUUIDS.add(UUID.fromString(maker.getUuid()));
                 if (maker.getChunkingEnabled()) {
                     newManager.chunkedChracteristicUUIDS.add(UUID.fromString(maker.getUuid()));
                 }
             }
+
 
             newManager.registeredServiceUUIDS.add(service.getServiceUUID());
             newManager.chunkedChracteristicUUIDS.addAll(service.chunkedUUIDs);

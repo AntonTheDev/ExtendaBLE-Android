@@ -28,9 +28,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Created by Anton on 4/10/17.
- */
 
 public class EBPeripheralManager {
     private static final String mtuServiceUUIDString = "F80A41CA-8B71-47BE-8A92-E05BB5F1F862";
@@ -45,7 +42,7 @@ public class EBPeripheralManager {
     public ArrayList<BluetoothGattService> registeredServices = new ArrayList<>();
     public ArrayList<UUID> chunkedChracteristicUUIDS = new ArrayList<>();
 
-    public HashMap<String , Short> mtuValues = new HashMap<String , Short>();
+    private HashMap<String, Short> mtuValues = new HashMap<>();
     public HashMap<UUID , ExtendaBLEResultCallback> updateCallbacks = new HashMap<>();
 
     private HashMap<BluetoothDevice , ArrayList<EBTransaction>> activeReadTransations = new HashMap<>();
@@ -69,6 +66,12 @@ public class EBPeripheralManager {
         }
 
         startAdvertising();
+    }
+
+    public void close() {
+        stopAdvertising();
+        mGattServer.close();
+
     }
 
     private void startAdvertising() {
@@ -105,6 +108,12 @@ public class EBPeripheralManager {
         public void onServiceAdded(int status, BluetoothGattService service) {
             Log.d(logTag, "Service Added to Peripheral " + service.getUuid()  + " w/ Status : " + status);
             super.onServiceAdded(status, service);
+
+            if (status == 133) {
+                Log.d(logTag, "Unable to Add Service " + service.getUuid()  + " w/ Restarting Peripheral");
+                close();
+                startAdvertisingInApplicationContext(applicationContext);
+            }
         }
 
         @Override
@@ -115,9 +124,8 @@ public class EBPeripheralManager {
 
         @Override
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
-           // Log.i(logTag, "onCharacteristicWriteRequest, device: " + device.getAddress());
             super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
-            handleWriteRequest(device, requestId,characteristic,preparedWrite, responseNeeded, offset, value);
+            handleWriteRequest(device, requestId,characteristic, offset, value);
         }
 
         @Override
@@ -160,7 +168,7 @@ public class EBPeripheralManager {
         }
     };
 
-    AdvertiseCallback LEAdvertisingCallback = new AdvertiseCallback() {
+    private AdvertiseCallback LEAdvertisingCallback = new AdvertiseCallback() {
         @Override
         public void onStartSuccess(AdvertiseSettings settingsInEffect) {
             Log.d(logTag, "Advertising Started Successfully");
@@ -191,7 +199,7 @@ public class EBPeripheralManager {
         activeReadTransations.putIfAbsent(device, new ArrayList<>());
         List<EBTransaction> transactions = activeReadTransations.get(device).stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid())).collect(Collectors.toList());
 
-        EBTransaction transaction = null;
+        EBTransaction transaction;
 
         if (transactions.size() == 0) {
             Log.d(logTag, "Peripheral Read Started for " + characteristic.getUuid());
@@ -224,30 +232,27 @@ public class EBPeripheralManager {
             transaction.processTransaction();
             byte[] packet = transaction.nextPacket();
             mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, packet);
+
+            if (transaction.isComplete()) {
+                Log.d(logTag, "Peripheral Read Packet " + transaction.getActiveResponseCount() + " / " + transaction.getTotalPacketCount());
+                Log.d(logTag, "Peripheral Read Complete");
+
+                int index = activeReadTransations.get(device).indexOf(transactions.get(0));
+                activeReadTransations.get(device).remove(index);
+            } else {
+                Log.d(logTag, "Peripheral Read Packet " + transaction.getActiveResponseCount() + " / " + transaction.getTotalPacketCount());
+            }
         }
-
-        if (transaction.isComplete()) {
-            Log.d(logTag, "Peripheral Read Packet " + transaction.getActiveResponseCount() + " / " + transaction.getTotalPacketCount());
-            Log.d(logTag, "Peripheral Read Complete");
-
-            int index = activeReadTransations.get(device).indexOf(transactions.get(0));
-            activeReadTransations.get(device).remove(index);
-        } else {
-            Log.d(logTag, "Peripheral Read Packet " + transaction.getActiveResponseCount() + " / " + transaction.getTotalPacketCount());
-        }
-
     }
 
-    private void handleWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+    private void handleWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, int offset, byte[] value) {
 
         if (offset != 0) {
             mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null);
             return;
         }
 
-        byte[] data =  value;
-
-        if (data == null) {
+        if (value == null) {
             mGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_ATTRIBUTE_LENGTH, offset, null);
             return;
         }
@@ -255,7 +260,7 @@ public class EBPeripheralManager {
         activeWriteTransations.putIfAbsent(device, new ArrayList<>());
         List<EBTransaction> transactions = activeWriteTransations.get(device).stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid())).collect(Collectors.toList());
 
-        EBTransaction transaction = null;
+        EBTransaction transaction;
 
         if (transactions.size() == 0) {
             Log.d(logTag, "Peripheral Write Started for " + characteristic.getUuid());
@@ -307,7 +312,7 @@ public class EBPeripheralManager {
             BluetoothGatt localBluetoothGatt = gatt;
             Method localMethod = localBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
             if (localMethod != null) {
-                boolean bool = ((Boolean) localMethod.invoke(localBluetoothGatt, new Object[0])).booleanValue();
+                boolean bool = (Boolean) localMethod.invoke(localBluetoothGatt, new Object[0]);
                 startAdvertising();
                 return bool;
             }

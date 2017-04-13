@@ -21,19 +21,12 @@ public class EBCharacteristicMaker {
     private ExtendaBLEResultCallback mUpdateCallback;
     private Boolean mChunkingEnabled = false;
 
-    private int[] mProperties = new int[]{ PROPERTY_READ, PROPERTY_WRITE};
-    private int[] mPermissions = new int[]{ PERMISSION_READ, PERMISSION_WRITE};
+    private int mProperties = PROPERTY_READ | PROPERTY_WRITE;
+    private int mPermissions = PERMISSION_READ | PERMISSION_WRITE;
 
     public BluetoothGattCharacteristic constructedCharacteristic() {
         UUID chracteristicUUID = UUID.fromString(mUuid);
-
-        int properties = 0;
-        int permissions = 0;
-
-        for (Integer property : mProperties) properties = properties | property;
-        for (Integer permission : mPermissions) permissions = permissions | permission;
-
-        BluetoothGattCharacteristic newCharacteristic = new BluetoothGattCharacteristic(chracteristicUUID, properties, permissions);
+        BluetoothGattCharacteristic newCharacteristic = new BluetoothGattCharacteristic(chracteristicUUID, mProperties, mPermissions);
         return newCharacteristic;
     }
 
@@ -52,12 +45,12 @@ public class EBCharacteristicMaker {
         return this;
     }
 
-    public EBCharacteristicMaker setProperties(int[] properties) {
+    public EBCharacteristicMaker setProperties(int properties) {
         mProperties = properties;
         return this;
     }
 
-    public EBCharacteristicMaker setPermissions(int[] permissions) {
+    public EBCharacteristicMaker setPermissions(int permissions) {
         mPermissions = permissions;
         return this;
     }

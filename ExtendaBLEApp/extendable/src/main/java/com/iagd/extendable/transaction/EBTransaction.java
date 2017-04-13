@@ -52,6 +52,10 @@ public class EBTransaction {
         this.type = type;
         this.direction = direction;
         this.mtuSize = mtuSize;
+
+        if (this.type == TransactionType.READ || this.type == TransactionType.WRITE) {
+            totalPackets = 1;
+        }
     }
 
     public ArrayList<byte[]> getDataPackets() {
@@ -119,10 +123,6 @@ public class EBTransaction {
         return dataPackets.get(activeResponseCount - 1);
     }
 
-   // public void sentReceipt() {
-   //     activeResponseCount = activeResponseCount + 1;
-   // }
-
     public void setCompletionCallback(ExtendaBLEResultCallback callback) {
         this.completionCallback = callback;
     }
@@ -151,11 +151,11 @@ public class EBTransaction {
     public Boolean isComplete() {
        //  Log.d(logTag, "IS COMPLETE : " + activeResponseCount + " / " + totalPackets);
 
-        if (isChunkable()) {
+        //if (isChunkable()) {
             return totalPackets == activeResponseCount;
-        }
+       // }
 
-        return (activeResponseCount == 1);
+       // return (activeResponseCount == 1);
     }
 
     private Boolean isChunkable() {
