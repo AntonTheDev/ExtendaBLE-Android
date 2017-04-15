@@ -125,14 +125,14 @@ public class MainActivity extends AppCompatActivity {
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            System.out.println( result.getString());
+                            Log.d(peripheralLogTag, "Peripheral Received Value" + result.getString());
+
                             if (result.getString().equals(testValueString)) {
-                                Log.d(peripheralLogTag, "Reconstructed Values Did Match");
+                                Log.d(peripheralLogTag, "Reconstructed Value Matched");
                             } else {
-                                Log.d(peripheralLogTag, "Reconstructed Values Did Not Match");
+                                Log.d(peripheralLogTag, "Reconstructed Value Did Not Match");
                             }
 
-                            Log.d(peripheralLogTag, "Peripheral Received Value" + result.getString());
                             return null;
                         }
                     });
@@ -185,55 +185,51 @@ public class MainActivity extends AppCompatActivity {
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            Log.d(centralLogTag, "Central Data for beanScratchCharacteristic1UUIDKey Updated" + result);
                             return null;
                         }
                     });
-                });
-                service.addCharacteristic(beanScratchCharacteristic2UUIDKey, characteristic -> {
+                }).addCharacteristic(beanScratchCharacteristic2UUIDKey, characteristic -> {
 
                     characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
                     characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            Log.d(centralLogTag, "Central Data for beanScratchCharacteristic2UUIDKey Updated" + result);
                             return null;
                         }
                     });
-                });
-                service.addCharacteristic(beanScratchCharacteristic3UUIDKey, characteristic -> {
+                }).addCharacteristic(beanScratchCharacteristic3UUIDKey, characteristic -> {
 
                     characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
                     characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            Log.d(centralLogTag, "Central Data for beanScratchCharacteristic3UUIDKey Updated" + result);
                             return null;
                         }
                     });
-                });
-                service.addCharacteristic(beanScratchCharacteristic4UUIDKey, characteristic -> {
+                }).addCharacteristic(beanScratchCharacteristic4UUIDKey, characteristic -> {
 
                     characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
                     characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            Log.d(centralLogTag, "Central Data for beanScratchCharacteristic4UUIDKey Updated" + result);
                             return null;
                         }
                     });
-                });
-                service.addCharacteristic(beanScratchCharacteristic5UUIDKey, characteristic -> {
+                }).addCharacteristic(beanScratchCharacteristic5UUIDKey, characteristic -> {
 
                     characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
                     characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            Log.d(centralLogTag, "Central Data Updated" + result);
+                            Log.d(centralLogTag, "Central Data for beanScratchCharacteristic5UUIDKey Updated" + result);
                             return null;
                         }
                     });

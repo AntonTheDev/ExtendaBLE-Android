@@ -37,13 +37,13 @@ public class EBServiceMaker {
         return UUID.fromString(mServiceUUID);
     }
 
-    public EBCharacteristicMaker addCharacteristic(String chracteristicUUID, CharacteristicMakerOperation maker) {
+    public EBServiceMaker addCharacteristic(String chracteristicUUID, CharacteristicMakerOperation maker) {
 
         EBCharacteristicMaker characteristicMaker =  new EBCharacteristicMaker();
         characteristicMaker.setUuid(chracteristicUUID);
         characteristics.add(characteristicMaker);
         maker.addCharacteristic(characteristicMaker);
-        return characteristicMaker;
+        return this;
     }
 
     public BluetoothGattService constructedService() {
