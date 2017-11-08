@@ -10,6 +10,8 @@
 
 One of the unique features of **ExtendaBLE** is that it allows to bypass the limitations of the MTU size in communicating between devices. The library negotiates a common MTU size, and allows breaks down the data to be sent between devices into packets, which are then reconstructed by the receiving entity.
 
+An iOS/OSX/tvOS library with support for packet based communication between Android and iOS/tvOs/OSX can be found here..  [ExtendaBLE](https://github.com/AntonTheDev/ExtendaBLE)
+
 **NOTE: This is a work in Progress / Currently works with iOS/OSX/tvOS framework, looking for help to make a standalone library**
 
 ## Features
