@@ -1,5 +1,7 @@
 package com.iagd.extendable;
 
+import android.content.Context;
+
 import com.iagd.extendable.maker.EBCentralManagerMaker;
 import com.iagd.extendable.maker.EBPeripheralManagerMaker;
 import com.iagd.extendable.maker.lambdas.CentralManagerMakerOperation;
@@ -9,15 +11,19 @@ import com.iagd.extendable.manager.EBPeripheralManager;
 
 public class ExtendaBLE {
 
-    public static EBCentralManager newCentralManager(CentralManagerMakerOperation maker) {
+    public static EBCentralManager newCentralManager(Context context, CentralManagerMakerOperation maker) {
         EBCentralManagerMaker manager =  new EBCentralManagerMaker();
         maker.centralMaker(manager);
-        return manager.constructedManager();
+        EBCentralManager newManager = manager.constructedManager();
+        newManager.setApplicationContext(context);
+        return newManager;
     }
 
-    public static EBPeripheralManager newPeripheralManager(PeripheralManagerMakerOperation maker) {
+    public static EBPeripheralManager newPeripheralManager(Context context, PeripheralManagerMakerOperation maker) {
         EBPeripheralManagerMaker manager =  new EBPeripheralManagerMaker();
         maker.peripheralMaker(manager);
-        return manager.constructedManager();
+        EBPeripheralManager newManager = manager.constructedManager();
+        newManager.setApplicationContext(context);
+        return newManager;
     }
 }

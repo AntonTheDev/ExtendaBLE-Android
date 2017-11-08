@@ -67,7 +67,7 @@ public class EBServiceMaker {
                 callbacks.put(gattCharacteristic.getUuid(), characteristic.getUpdateCallback());
             }
 
-            if (characteristic.getChunkingEnabled()) {
+            if (characteristic.getPacketsEnabled()) {
                 chunkedUUIDs.add(gattCharacteristic.getUuid());
             }
         }

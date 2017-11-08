@@ -1,5 +1,6 @@
 package com.iagd.extendableapp;
 
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
@@ -17,7 +18,7 @@ import static android.bluetooth.BluetoothGattCharacteristic.PERMISSION_READ;
 import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY;
 import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_READ;
 import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE;
-import static android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE;
+import static android.bluetooth.BluetoothGattCharacteristic.PERMISSION_WRITE;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -28,13 +29,12 @@ public class MainActivity extends AppCompatActivity {
         BEAN_CENTRAL
     }
 
-    static DeviceType activityConfiguration = DeviceType.BEAN_CENTRAL;
+    private static DeviceType activityConfiguration = DeviceType.CENTRAL;
 
     private static String peripheralLogTag = "PeripheralManager";
     private static String centralLogTag = "CentralManager";
 
     private static final String testValueString = "Hello this is a faily long string to check how many bytes lets make this a lot longer even longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer an longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer and longer XXXXXXXXXXXXXXXX";
-
     private static final String dataServiceUUIDString               = "3C215EBB-D3EF-4D7E-8E00-A700DFD6E9EF";
     private static final String dataServiceCharacteristicUUID       = "830FEB83-C879-4B14-92E0-DF8CCDDD8D8F";
 
@@ -64,73 +64,84 @@ public class MainActivity extends AppCompatActivity {
         switch (activityConfiguration) {
             case CENTRAL:
                 centralManager.close();
+                break;
             case PERIPHERAL:
                 peripheralManager.close();
+                break;
             case BEAN_CENTRAL:
                 centralManager.close();
+                break;
         }
+
+        Log.d("MainActivity", "destroy");
+
+
+        super.onDestroy();
     }
 
     public void startManager() {
         switch (activityConfiguration) {
             case CENTRAL:
                 startCentrallManager();
+                break;
             case PERIPHERAL:
                 startPeripheralManager();
+                break;
             case BEAN_CENTRAL:
                 startBeanCentralManager();
+                break;
         }
     }
 
     public void startCentrallManager() {
 
-        centralManager = ExtendaBLE.newCentralManager(manager -> {
+        centralManager = ExtendaBLE.newCentralManager(getApplicationContext(), manager -> {
 
             manager.addService(dataServiceUUIDString, service -> {
+
                 service.addCharacteristic(dataServiceCharacteristicUUID, characteristic -> {
 
-                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
-                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
-                    characteristic.setChunkingEnabled(true);
+                    characteristic.setProperties(PROPERTY_READ | PROPERTY_WRITE | PROPERTY_NOTIFY);
+                    characteristic.setPermissions(PERMISSION_READ | PERMISSION_WRITE);
+                    characteristic.setPacketsEnabled(true);
 
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
-                        public Void call()  {
+                        public Void call() {
                             Log.d(centralLogTag, "Central Data Updated" + result);
                             return null;
                         }
                     });
                 });
             });
-        });
 
-        centralManager.setPeripheralConnectionCallback(() -> {
+        }).setPeripheralConnectionCallback(() -> {
+
             performWrite();
             return null;
-        });
 
-        centralManager.startScanningInApplicationContext(getApplicationContext());
+        }).startScanning();
+
     }
 
     public void startPeripheralManager() {
-        peripheralManager = ExtendaBLE.newPeripheralManager(manager -> {
+
+        peripheralManager = ExtendaBLE.newPeripheralManager(getApplicationContext(), manager -> {
 
             manager.addService(dataServiceUUIDString, service -> {
                 service.addCharacteristic(dataServiceCharacteristicUUID, characteristic -> {
 
-                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY);
-                    characteristic.setPermissions(PERMISSION_READ|PERMISSION_WRITE);
-                    characteristic.setChunkingEnabled(true);
+                    characteristic.setProperties(PROPERTY_READ|PROPERTY_WRITE|PROPERTY_NOTIFY).setPermissions(PERMISSION_READ|PERMISSION_WRITE);
+                    characteristic.setPacketsEnabled(true);
 
                     characteristic.setUpdateCallback(new ExtendaBLEResultCallback() {
                         @Override
                         public Void call()  {
-                            Log.d(peripheralLogTag, "Peripheral Received Value" + result.getString());
 
                             if (result.getString().equals(testValueString)) {
                                 Log.d(peripheralLogTag, "Reconstructed Value Matched");
                             } else {
-                                Log.d(peripheralLogTag, "Reconstructed Value Did Not Match");
+                                Log.d(peripheralLogTag, "Reconstructed Value Did Not Match" + result.getString());
                             }
 
                             return null;
@@ -140,10 +151,11 @@ public class MainActivity extends AppCompatActivity {
             });
         });
 
-        peripheralManager.startAdvertisingInApplicationContext(getApplicationContext());
+        peripheralManager.startAdvertising();
     }
 
     private void performWrite() {
+
         centralManager.write(dataServiceCharacteristicUUID, testValueString, new ExtendaBLEResultCallback() {
             @Override
             public Void call()  {
@@ -155,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void performRead() {
+
         centralManager.read(dataServiceCharacteristicUUID, new ExtendaBLEResultCallback() {
             @Override
             public Void call()  {
@@ -165,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
                         Log.d("CentralManager", "Read Values Match");
                     }
 
-                    Log.d("Centra Manager", "Read Complete " + resultString);
+                    Log.d("CentralManager", "Read Complete " + resultString);
                 }
                 return null;
             }
@@ -174,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void startBeanCentralManager() {
 
-        centralManager = ExtendaBLE.newCentralManager(manager -> {
+        centralManager = ExtendaBLE.newCentralManager(getApplicationContext(), manager -> {
             manager.setPeripheralName("Bean");
             manager.addService(beanScratchServiceUUIDKey, service -> {
 
@@ -235,14 +248,13 @@ public class MainActivity extends AppCompatActivity {
                     });
                 });
             });
-        });
 
-        centralManager.setPeripheralConnectionCallback(() -> {
+        }).setPeripheralConnectionCallback(() -> {
+
             performBeanRead();
             return null;
-        });
 
-        centralManager.startScanningInApplicationContext(getApplicationContext());
+        }).startScanning();
     }
 
     private void performBeanRead() {
@@ -304,10 +316,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void checkPermissionsAndScan() {
-        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
-        } else {
-            startManager();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+            } else {
+                startManager();
+            }
         }
     }
 
@@ -321,7 +335,6 @@ public class MainActivity extends AppCompatActivity {
                 }  else {
                     System.out.println("coarse location permission not granted");
                 }
-                return;
             }
         }
     }

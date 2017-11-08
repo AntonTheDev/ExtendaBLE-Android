@@ -11,10 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-/**
- * Created by Anton on 4/6/17.
- */
-
 public class EBData {
 
     private static String logTag = "TransactionResult";
@@ -31,7 +27,7 @@ public class EBData {
 
     public EBData(Object value, short mtuSize) {
         this.mtuSize = mtuSize;
-        EBData request = null;
+      //  EBData request = null;
 
         if (value.getClass().equals(String.class)) {
             configure((String) value, mtuSize);
@@ -45,9 +41,9 @@ public class EBData {
             configure((long) value, mtuSize);
         }
 
-        if (request != null) {
-            dataPackets = request.chunckedArray();
-        }
+       // if (request != null) {
+       //     dataPackets = request.chunckedArray();
+       // }
     }
 
     public EBData(byte[] bytes) {
@@ -96,7 +92,7 @@ public class EBData {
         this.mtuSize = mtuSize;
     }
 
-    public byte[] reconstructedData() {
+    private byte[] reconstructedData() {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         DataOutputStream dout = new DataOutputStream(out);
@@ -120,6 +116,8 @@ public class EBData {
 
         int packetSize = mtuSize - 4;
         int length = dataBytes.length;
+
+        Log.e(logTag, "Data Length:" + length);
         int offset = 0;
         short totalPackets  = (short) ((dataBytes.length / packetSize) + (dataBytes.length % packetSize > 0 ? 1 : 0));
         short currentCount = 0;
@@ -154,55 +152,45 @@ public class EBData {
 
     public byte getByteAtIndex(int index) {
         try {
-            byte byteValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).get(index);
-            return byteValue;
+            return ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).get(index);
         } catch(IndexOutOfBoundsException e) {
             Log.e(logTag, "getByteAtIndex Exception Thrown :" + e);
-        } finally {
-            return 0;
         }
+
+        return 0;
     }
 
     public short getShortAtIndex(int index) {
         try {
-            short shortValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getShort(index);
-            return shortValue;
+            return ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getShort(index);
         } catch(IndexOutOfBoundsException e) {
             Log.e(logTag, "getShortAtIndex Exception Thrown :" + e);
-        } finally {
-            return 0;
         }
+
+        return 0;
     }
 
     public int getIntAtIndex(int index) {
         try {
-            int intValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getInt(index);
-            return intValue;
+            return ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getInt(index);
         } catch(IndexOutOfBoundsException e) {
             Log.e(logTag, "getIntAtIndex Exception Thrown :" + e);
-        } finally {
-            return 0;
         }
+
+        return 0;
     }
 
     public long getLongAtIndex(int index) {
         try {
-            long longValue = ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getLong(index);
-            return longValue;
+            return ByteBuffer.wrap(dataBytes).order(ByteOrder.BIG_ENDIAN).getLong(index);
         } catch(IndexOutOfBoundsException e) {
             Log.e(logTag, "getLongAtIndex Exception Thrown :" + e);
-        } finally {
-            return 0;
         }
+
+        return 0;
     }
 
     public String getString() {
-        try {
-            return new String(dataBytes, StandardCharsets.UTF_8);
-        } catch(IndexOutOfBoundsException e) {
-            Log.e(logTag, "getString Exception Thrown :" + e);
-        } finally {
-            return new String("Out Of Bounds");
-        }
+        return  new String(dataBytes, StandardCharsets.UTF_8);
     }
 }

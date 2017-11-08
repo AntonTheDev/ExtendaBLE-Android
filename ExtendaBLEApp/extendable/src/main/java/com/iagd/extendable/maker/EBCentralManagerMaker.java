@@ -6,7 +6,6 @@ import android.bluetooth.BluetoothGattService;
 
 import com.iagd.extendable.maker.lambdas.ServiceMakerOperation;
 import com.iagd.extendable.manager.EBCentralManager;
-import com.iagd.extendable.result.ExtendaBLEResultCallback;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -17,16 +16,12 @@ import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_READ;
 import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_WRITE;
 import static android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE;
 
-/**
- * Created by Anton on 4/4/17.
- */
-
 public class EBCentralManagerMaker {
 
     private static final String mtuServiceUUIDString = "F80A41CA-8B71-47BE-8A92-E05BB5F1F862";
     private static final String mtuServiceCharacteristicUUID = "37CD1740-6822-4D85-9AAF-C2378FDC4329";
 
-    public ArrayList<EBServiceMaker> services = new ArrayList<EBServiceMaker>();
+    private ArrayList<EBServiceMaker> services = new ArrayList<>();
     private String peripheralName;
 
     public EBCentralManager addService(String serviceUUID, ServiceMakerOperation maker) {
@@ -54,7 +49,7 @@ public class EBCentralManagerMaker {
 
             for (EBCharacteristicMaker maker : service.characteristics) {
                 newManager.registeredChracteristicUUIDS.add(UUID.fromString(maker.getUuid()));
-                if (maker.getChunkingEnabled()) {
+                if (maker.getPacketsEnabled()) {
                     newManager.chunkedChracteristicUUIDS.add(UUID.fromString(maker.getUuid()));
                 }
             }

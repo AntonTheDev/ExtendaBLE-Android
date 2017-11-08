@@ -21,21 +21,18 @@ import com.iagd.extendable.result.ExtendaBLEResultCallback;
 import com.iagd.extendable.transaction.EBData;
 import com.iagd.extendable.transaction.EBTransaction;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 
 public class EBPeripheralManager {
+
     private static final String mtuServiceUUIDString = "F80A41CA-8B71-47BE-8A92-E05BB5F1F862";
     private static final String mtuServiceCharacteristicUUID = "37CD1740-6822-4D85-9AAF-C2378FDC4329";
 
     private static String logTag = "PeripheralManager";
 
-    private BluetoothManager bluetoothManager;
     private BluetoothLeAdvertiser mBLEAdvertiser;
     private BluetoothGattServer mGattServer;
 
@@ -50,31 +47,43 @@ public class EBPeripheralManager {
 
     private Context applicationContext;
 
+
+    public void setApplicationContext(Context applicationContext) {
+        this.applicationContext = applicationContext;
+    }
+
     /**
      * Start the scanner by passing it the application context at the start
      */
-    public void startAdvertisingInApplicationContext(Context context) {
-        this.applicationContext = context;
+    public EBPeripheralManager startAdvertising() {
+       // this.applicationContext = context;
 
-        bluetoothManager = (BluetoothManager) this.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE);
-        BluetoothAdapter mBluetoothAdapter = bluetoothManager.getAdapter();
-        mBLEAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
-        mGattServer = bluetoothManager.openGattServer(this.applicationContext, gattServerCallback);
+        BluetoothManager bluetoothManager = (BluetoothManager) this.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE);
 
-        for (BluetoothGattService service : registeredServices) {
-            mGattServer.addService(service);
+        if (bluetoothManager != null) {
+            BluetoothAdapter mBluetoothAdapter = bluetoothManager.getAdapter();
+
+            if (mBluetoothAdapter != null) {
+                mBLEAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
+                mGattServer = bluetoothManager.openGattServer(this.applicationContext, gattServerCallback);
+
+                for (BluetoothGattService service : registeredServices) {
+                    mGattServer.addService(service);
+                }
+
+                startAdvertisingBroadcast();
+            }
         }
 
-        startAdvertising();
+       return this;
     }
 
     public void close() {
         stopAdvertising();
         mGattServer.close();
-
     }
 
-    private void startAdvertising() {
+    private void startAdvertisingBroadcast() {
         Log.d(logTag, "Started Advertising");
 
         AdvertiseSettings settings = new AdvertiseSettings.Builder()
@@ -91,7 +100,7 @@ public class EBPeripheralManager {
         mBLEAdvertiser.startAdvertising(settings, data, LEAdvertisingCallback);
     }
 
-    public void stopAdvertising() {
+    private void stopAdvertising() {
         Log.d(logTag, "Stopped Advertising");
         mBLEAdvertiser.stopAdvertising(LEAdvertisingCallback);
     }
@@ -112,7 +121,7 @@ public class EBPeripheralManager {
             if (status == 133) {
                 Log.d(logTag, "Unable to Add Service " + service.getUuid()  + " w/ Restarting Peripheral");
                 close();
-                startAdvertisingInApplicationContext(applicationContext);
+                startAdvertisingBroadcast();
             }
         }
 
@@ -196,8 +205,17 @@ public class EBPeripheralManager {
             return;
         }
 
-        activeReadTransations.putIfAbsent(device, new ArrayList<>());
-        List<EBTransaction> transactions = activeReadTransations.get(device).stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid())).collect(Collectors.toList());
+        if (!activeReadTransations.containsKey(device)) {
+            activeReadTransations.put(device, new ArrayList<>());
+        }
+
+        ArrayList<EBTransaction> transactions = new ArrayList<>();
+
+        for (EBTransaction transaction : activeReadTransations.get(device)) {
+            if (transaction.getCharacteristic().getUuid().equals(characteristic.getUuid())) {
+                transactions.add(transaction);
+            }
+        }
 
         EBTransaction transaction;
 
@@ -257,8 +275,17 @@ public class EBPeripheralManager {
             return;
         }
 
-        activeWriteTransations.putIfAbsent(device, new ArrayList<>());
-        List<EBTransaction> transactions = activeWriteTransations.get(device).stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid())).collect(Collectors.toList());
+        if (!activeWriteTransations.containsKey(device)) {
+            activeWriteTransations.put(device, new ArrayList<>());
+        }
+
+        ArrayList<EBTransaction> transactions = new ArrayList<>();
+
+        for (EBTransaction transaction : activeWriteTransations.get(device)) {
+            if (transaction.getCharacteristic().getUuid().equals(characteristic.getUuid())) {
+                transactions.add(transaction);
+            }
+        }
 
         EBTransaction transaction;
 
@@ -305,21 +332,5 @@ public class EBPeripheralManager {
             activeWriteTransations.get(device).remove(index);
             Log.d(logTag, "Peripheral Write Complete");
         }
-    }
-
-    private boolean clearCacheAndDiscover(BluetoothGatt gatt){
-        try {
-            BluetoothGatt localBluetoothGatt = gatt;
-            Method localMethod = localBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
-            if (localMethod != null) {
-                boolean bool = (Boolean) localMethod.invoke(localBluetoothGatt, new Object[0]);
-                startAdvertising();
-                return bool;
-            }
-        }
-        catch (Exception localException) {
-            Log.e(logTag, "An exception occured while refreshing device");
-        }
-        return false;
     }
 }

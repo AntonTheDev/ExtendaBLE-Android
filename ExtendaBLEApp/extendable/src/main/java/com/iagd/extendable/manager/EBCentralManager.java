@@ -13,18 +13,19 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.ParcelUuid;
 import android.util.Log;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 import com.iagd.extendable.result.ExtendaBLEResultCallback;
 import com.iagd.extendable.transaction.EBTransaction;
@@ -34,7 +35,7 @@ import static android.bluetooth.le.ScanSettings.CALLBACK_TYPE_FIRST_MATCH;
 public class EBCentralManager {
 
     private static final String mtuServiceCharacteristicUUID = "37CD1740-6822-4D85-9AAF-C2378FDC4329";
-    private static String logTag = "CentralManager";
+    private static final String logTag = "CentralManager";
 
     private Context applicationContext;
 
@@ -57,28 +58,110 @@ public class EBCentralManager {
 
     private ArrayList<Runnable> pendingReadTransactions = new ArrayList<>();
 
+    private Boolean adapterWasReset = false;
+
+    private Boolean getAdapterWasReset() {
+        return adapterWasReset;
+    }
+
+    private void setAdapterWasReset(Boolean adapterWasReset) {
+        this.adapterWasReset = adapterWasReset;
+    }
 
     private Callable peripheralConnectionChange;
+
+    public void setApplicationContext(Context applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
     /**
      * Start the scanner by passing it the application context at the start
      */
 
-    public void startScanningInApplicationContext(Context context) {
-        this.applicationContext = context;
+    public EBCentralManager startScanning() {
 
         bluetoothManager = (BluetoothManager) this.applicationContext.getSystemService(Context.BLUETOOTH_SERVICE);
-        mBluetoothAdapter = bluetoothManager.getAdapter();
-        mBTScanner = mBluetoothAdapter.getBluetoothLeScanner();
-        startScanning();
+        if (bluetoothManager != null) {
+            mBluetoothAdapter = bluetoothManager.getAdapter();
+        }
+
+
+        if (!mBluetoothAdapter.isEnabled()) {
+            setAdapterWasReset(true);
+            resetAdapter();
+        } else {
+            startScanningTask();
+        }
+
+        return this;
     }
 
-    public void stopScanning() {
+    private void stopScanning() {
         Log.d(logTag, "Stop Scanning");
         AsyncTask.execute(() -> mBTScanner.stopScan(leScanCallback));
     }
 
-    private void startScanning() {
+    private ScanCallback leScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            Log.d(logTag, "Scan Results Triggered, Connecting to : " + result.getDevice().getName());
+
+            mConnectedGatt = result.getDevice().connectGatt(applicationContext, false, leGattCallback);
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            Log.d(logTag, "Scan Failed / Resetting with ErrorCode: " + errorCode);
+            super.onScanFailed(errorCode);
+            setAdapterWasReset(false);
+            resetAdapter();
+        }
+    };
+
+    private void resetAdapter() {
+
+        IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        applicationContext.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String action = intent.getAction();
+
+                if (action != null && action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+                    final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+
+                    switch (state) {
+                        case BluetoothAdapter.STATE_OFF:
+                            setAdapterWasReset(true);
+                            mBluetoothAdapter.enable();
+                            break;
+                        case BluetoothAdapter.STATE_TURNING_OFF:
+                            break;
+                        case BluetoothAdapter.STATE_ON:
+
+                            if (getAdapterWasReset()) {
+                                startScanningTask();
+                            } else {
+                                mBluetoothAdapter.disable();
+                            }
+                            break;
+                        case BluetoothAdapter.STATE_TURNING_ON:
+                            break;
+                    }
+                }
+            }
+        }, filter);
+
+        if (mBluetoothAdapter.isEnabled()) {
+            setAdapterWasReset(false);
+            mBluetoothAdapter.disable();
+        } else {
+            setAdapterWasReset(true);
+            mBluetoothAdapter.enable();
+        }
+    }
+
+    private void startScanningTask() {
+
         AsyncTask.execute(() -> {
             Log.d(logTag, "Configured Scan Settings / Filters");
 
@@ -94,31 +177,28 @@ public class EBCentralManager {
                 filters.add(filter);
             }
 
-            ScanSettings settings = new ScanSettings.Builder().setCallbackType(CALLBACK_TYPE_FIRST_MATCH).setReportDelay((long) 0.33).build();
+
+            ScanSettings settings = null;
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                settings = new ScanSettings.Builder().setCallbackType(CALLBACK_TYPE_FIRST_MATCH).setReportDelay((long) 0.33).build();
+            }
+
+            mBluetoothAdapter = bluetoothManager.getAdapter();
+            mBTScanner = mBluetoothAdapter.getBluetoothLeScanner();
+
             mBTScanner.startScan(filters, settings, leScanCallback);
         });
     }
 
     public void close() {
+        if (mConnectedGatt == null) {
+            return;
+        }
         mConnectedGatt.close();
+        mConnectedGatt = null;
     }
 
-    private ScanCallback leScanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            Log.d(logTag, "Scan Results Triggered, Connecting to : " + result.getDevice().getName());
-
-            mConnectedGatt = result.getDevice().connectGatt(applicationContext, false, leGattCallback);
-
-        }
-
-        @Override
-        public void onScanFailed(int errorCode) {
-            Log.d(logTag, "Scan Failed ErrorCode: " + errorCode);
-
-            super.onScanFailed(errorCode);
-        }
-    };
 
     /**
      * Handle Service Discovery
@@ -128,6 +208,7 @@ public class EBCentralManager {
         Log.d(logTag, "Services Discovered For : " + gatt.getDevice().getName() +  " w/ Status : " + status);
 
         for (BluetoothGattService service : gatt.getServices()) {
+            Log.d(logTag, "Services Discovered For : " + gatt.getDevice().getName() +  " w/ UUID : " + service.getUuid());
 
             if (registeredServiceUUIDS.contains(service.getUuid())) {
                 Log.d(logTag, "Services matched registered UUID(s) " + service.getUuid());
@@ -136,7 +217,11 @@ public class EBCentralManager {
                 for (BluetoothGattCharacteristic characteristic : service.getCharacteristics()) {
                     Log.d(logTag, "       - " + characteristic.getUuid());
 
-                    connectedCharacteristics.putIfAbsent(gatt, new ArrayList<>());
+                  //  connectedCharacteristics.putIfAbsent(gatt, new ArrayList<>());
+                    if (!connectedCharacteristics.containsKey(gatt)) {
+                        connectedCharacteristics.put(gatt, new ArrayList<>());
+                    }
+
                     connectedCharacteristics.get(gatt).add(characteristic);
 
                     configureMTUNotificationIfFound(gatt, characteristic);
@@ -171,8 +256,7 @@ public class EBCentralManager {
                 stopScanning();
                 Log.d(logTag, "Connected to GATT : " + gatt.getDevice().getAddress());
                 Log.d(logTag, "Starting Service Discovery");
-                clearCacheAndDiscover(mConnectedGatt);
-               //  mConnectedGatt.discoverServices();
+                mConnectedGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(logTag, "Disconnected from GATT : " + gatt.getDevice().getAddress());
             }
@@ -187,7 +271,7 @@ public class EBCentralManager {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicRead(gatt, characteristic, status);
-            handleReadTransationResponse(gatt, characteristic);
+            handleReadTransactionResponse(gatt, characteristic);
         }
 
         @Override
@@ -257,7 +341,7 @@ public class EBCentralManager {
     }
 
     /**
-     *  Write logic is as follows, wheneverver a write transaction is initiated
+     *  Write logic is as follows, whenever a write transaction is initiated
      *  a new instance of EBTransaction is created to track the send packets
      *  vs the successful responses from the peripheral.
      *
@@ -273,11 +357,18 @@ public class EBCentralManager {
             for (BluetoothGattCharacteristic characteristic : connectedCharacteristics.get(gatt)) {
 
                 if (characteristic.getUuid().toString().toUpperCase().equals(characteristicUUID.toUpperCase())) {
-                    activeWriteTransactions.putIfAbsent(gatt, new ArrayList<>());
 
-                    List<EBTransaction> transactions = activeWriteTransactions.get(gatt)
-                            .stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid()))
-                            .collect(Collectors.toList());
+                    if (!activeWriteTransactions.containsKey(gatt)) {
+                        activeWriteTransactions.put(gatt, new ArrayList<>());
+                    }
+
+                    ArrayList<EBTransaction> transactions = new ArrayList<>();
+
+                    for (EBTransaction transaction : activeWriteTransactions.get(gatt)) {
+                        if (transaction.getCharacteristic().getUuid().equals(characteristic.getUuid())) {
+                            transactions.add(transaction);
+                        }
+                    }
 
                     EBTransaction transaction = null;
 
@@ -297,9 +388,16 @@ public class EBCentralManager {
     }
 
     private void handleWriteTransationResponse(BluetoothGattCharacteristic characteristic, BluetoothGatt fromGatt) {
+
         if (activeWriteTransactions.get(fromGatt) != null) {
 
-            List<EBTransaction> transactions = activeWriteTransactions.get(fromGatt).stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid())).collect(Collectors.toList());
+            ArrayList<EBTransaction> transactions = new ArrayList<>();
+
+            for (EBTransaction transaction : activeWriteTransactions.get(fromGatt)) {
+                if (transaction.getCharacteristic().getUuid().equals(characteristic.getUuid())) {
+                    transactions.add(transaction);
+                }
+            }
 
             if (transactions.size() != 0) {
                 int index = activeWriteTransactions.get(fromGatt).indexOf(transactions.get(0));
@@ -342,24 +440,33 @@ public class EBCentralManager {
         transaction.setCharacteristic(characteristic);
         transaction.setCompletionCallback(updateCallback);
         transaction.setData(data);
+
         return transaction;
     }
-
 
     /**
      *  Read logic is as follows....
      */
 
     public void read(String characteristicUUID, ExtendaBLEResultCallback updateCallback) {
+
         Log.d(logTag, "Bootstrap Read Transaction for " + characteristicUUID);
 
         for (BluetoothGatt gatt : connectedCharacteristics.keySet()) {
             for (BluetoothGattCharacteristic characteristic : connectedCharacteristics.get(gatt)) {
                 if (characteristic.getUuid().toString().toUpperCase().equals(characteristicUUID.toUpperCase())) {
 
-                    activeReadTransactions.putIfAbsent(gatt, new ArrayList<>());
+                    if (!activeReadTransactions.containsKey(gatt)) {
+                        activeReadTransactions.put(gatt, new ArrayList<>());
+                    }
 
-                    List<EBTransaction> transactions = activeReadTransactions.get(gatt).stream().filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid())).collect(Collectors.toList());
+                    ArrayList<EBTransaction> transactions = new ArrayList<>();
+
+                    for (EBTransaction transaction : activeReadTransactions.get(gatt)) {
+                        if (transaction.getCharacteristic().getUuid().equals(characteristic.getUuid())) {
+                            transactions.add(transaction);
+                        }
+                    }
 
                     if (transactions.size() == 0) {
                         EBTransaction.TransactionType transactionType = EBTransaction.TransactionType.READ;
@@ -382,13 +489,19 @@ public class EBCentralManager {
         }
     }
 
-    private void handleReadTransationResponse(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+    private void handleReadTransactionResponse(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+
         Log.d(logTag, "Received Response for " + characteristic.getUuid().toString());
 
         if (activeReadTransactions.get(gatt) != null) {
-            List<EBTransaction> transactions = activeReadTransactions.get(gatt).stream()
-                    .filter(p -> p.getCharacteristic().getUuid().equals(characteristic.getUuid()))
-                    .collect(Collectors.toList());
+
+            ArrayList<EBTransaction> transactions = new ArrayList<>();
+
+            for (EBTransaction transaction : activeReadTransactions.get(gatt)) {
+                if (transaction.getCharacteristic().getUuid().equals(characteristic.getUuid())) {
+                    transactions.add(transaction);
+                }
+            }
 
             if (transactions.get(0) != null) {
                 int index = activeReadTransactions.get(gatt).indexOf(transactions.get(0));
@@ -416,19 +529,9 @@ public class EBCentralManager {
     private void scheduleReadOnCharacteristic(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
 
         if (pendingReadTransactions.size() > 0) {
-            pendingReadTransactions.add(new Runnable() {
-                @Override
-                public void run() {
-                    gatt.readCharacteristic(characteristic);
-                }
-            });
+            pendingReadTransactions.add(() -> gatt.readCharacteristic(characteristic));
         } else {
-            pendingReadTransactions.add(new Runnable() {
-                @Override
-                public void run() {
-                    gatt.readCharacteristic(characteristic);
-                }
-            });
+            pendingReadTransactions.add(() -> gatt.readCharacteristic(characteristic));
 
             pendingReadTransactions.get(0).run();
         }
@@ -441,22 +544,5 @@ public class EBCentralManager {
         if (pendingReadTransactions.size() > 0) {
             pendingReadTransactions.get(0).run();
         }
-    }
-
-    private boolean clearCacheAndDiscover(BluetoothGatt gatt){
-        try {
-            BluetoothGatt localBluetoothGatt = gatt;
-            Method localMethod = localBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
-            if (localMethod != null) {
-                boolean bool = ((Boolean) localMethod.invoke(localBluetoothGatt, new Object[0])).booleanValue();
-                mConnectedGatt.discoverServices();
-                return bool;
-            }
-        }
-        catch (Exception localException) {
-            Log.e(logTag, "An exception occurred while refreshing device");
-        }
-
-        return false;
     }
 }

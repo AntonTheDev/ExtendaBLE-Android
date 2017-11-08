@@ -5,21 +5,11 @@ import android.util.Log;
 
 import com.iagd.extendable.result.ExtendaBLEResultCallback;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
-import java.util.Arrays;
-
-/**
- * Created by Anton on 4/5/17.
- */
 
 public class EBTransaction {
-
-    private static String logTag = "Transaction";
 
     public enum TransactionDirection {
         CENTRAL_TO_PERIPHERAL,
@@ -38,7 +28,6 @@ public class EBTransaction {
     private byte[] data;
 
     private TransactionType type;
-    private TransactionDirection direction;
 
     private short mtuSize = 20;
     private int totalPackets = 0;
@@ -46,11 +35,10 @@ public class EBTransaction {
     private ExtendaBLEResultCallback completionCallback;
 
     private int activeResponseCount = 0;
-    private ArrayList<byte[]> dataPackets = new ArrayList<byte[]>();
+    private ArrayList<byte[]> dataPackets = new ArrayList<>();
 
     public EBTransaction(TransactionType type, TransactionDirection direction, short mtuSize) {
         this.type = type;
-        this.direction = direction;
         this.mtuSize = mtuSize;
 
         if (this.type == TransactionType.READ || this.type == TransactionType.WRITE) {
@@ -72,15 +60,14 @@ public class EBTransaction {
 
     public void setData(byte[] value, short mtuSize) {
 
-        if (isChunkable()) {
+        if (isPacketBased()) {
             this.mtuSize = mtuSize;
 
             EBData request = new EBData(value, mtuSize);
 
-            if (request != null) {
                 dataPackets = request.chunckedArray();
                 totalPackets = dataPackets.size();
-            }
+
         } else {
             if (data != null) {
                 dataPackets.add(data);
@@ -90,13 +77,13 @@ public class EBTransaction {
 
     public void setData(Object value) {
 
-        if (isChunkable()) {
+        if (isPacketBased()) {
+
             EBData request = new EBData(value, mtuSize);
 
-            if (request != null) {
-                dataPackets = request.chunckedArray();
-                totalPackets = dataPackets.size();
-            }
+            dataPackets = request.chunckedArray();
+            totalPackets = dataPackets.size();
+
         } else {
             if (data != null) {
                 dataPackets.add(data);
@@ -105,9 +92,9 @@ public class EBTransaction {
     }
 
     public byte[] getData() {
-        if (isChunkable()) {
+        if (isPacketBased()) {
             EBData data = new EBData(dataPackets);
-            return data.reconstructedData();
+            return data.getData();
         } else if (dataPackets.size() == 1) {
             return dataPackets.get(0);
         }
@@ -149,16 +136,12 @@ public class EBTransaction {
     }
 
     public Boolean isComplete() {
-       //  Log.d(logTag, "IS COMPLETE : " + activeResponseCount + " / " + totalPackets);
-
-        //if (isChunkable()) {
-            return totalPackets == activeResponseCount;
-       // }
-
-       // return (activeResponseCount == 1);
+        String logTag = "Transaction";
+        Log.d(logTag, "IS COMPLETE : " + activeResponseCount + " / " + totalPackets);
+        return totalPackets == activeResponseCount;
     }
 
-    private Boolean isChunkable() {
+    private Boolean isPacketBased() {
         return (type == TransactionType.READ_CHUNKABLE || type == TransactionType.WRITE_CHUNKABLE);
     }
 }
