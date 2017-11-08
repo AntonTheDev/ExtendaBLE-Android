@@ -185,11 +185,14 @@ central = ExtendaBLE.newCentralManager(getApplicationContext(), manager -> {
 
 To perform a write for a specific characteristic for a connected peripheral, call the ``write(..)`` on the central, and with the content to write, and the characteristicUUID to write to. The callback will be triggered once the write is complete.  
 
-```swift
-central?.write(data: stringData, toUUID: dataServiceCharacteristicUUIDKey) { (writtenData, error) in    
-
-    /* Do something upon successful write operation */
-}
+```java
+centralManager.write(dataServiceCharacteristicUUID, testValueString, new ExtendaBLEResultCallback() {
+    @Override
+    public Void call()  {
+        /* Do something upon successful write operation */
+        return null;
+    }
+});
 ```
 
 #### Perform Read
@@ -198,7 +201,7 @@ To perform a read for a specific characteristic for a connected peripheral, call
 
 ```java
 
-centralManager.read(dataServiceCharacteristicUUID, new ExtendaBLEResultCallback() {
+central.read(dataServiceCharacteristicUUID, new ExtendaBLEResultCallback() {
     @Override
     public Void call()  {
         if (result != null) {
